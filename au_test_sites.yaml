@@ -95,3 +95,9 @@ Dundas:
     max_x: -900000
     min_y: -3650000
     max_y: -3550000
+
+Kalgoorlie:
+    min_x: -1002450
+    max_x: -972375
+    min_y: -3402100
+    max_y: -3366125
