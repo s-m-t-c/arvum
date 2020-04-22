@@ -3,7 +3,7 @@
 #PBS -P u46
 #PBS -l mem=60GB
 #PBS -l ncpus=10
-#PBS -l walltime=3:00:00
+#PBS -l walltime=10:00:00
 #PBS -l wd
 #PBS -l storage=gdata/v10+gdata/r78+gdata/rs0+gdata/u46+gdata/fk4
 

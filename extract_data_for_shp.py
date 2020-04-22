@@ -6,6 +6,10 @@ Run using:
 
 python3 modeltrainer.py --geomedian --product ls8_nbart_geomedian_annual ~/cultivated_classification/training_data/2015/*shp
 
+Calc_indices doesn't work at the moment, needs an update.
+
+Feature stats geomedian doesn't work either.
+
 """
 
 # Load modules
@@ -31,7 +35,7 @@ def extract_data(shp_list, product, year, output_file=None, feature_stats=None):
                                                      product=product,
                                                      time=('{}-01-01'.format(year), '2015-12-31'.format(year)),
                                                      crs='EPSG:3577', field='classnum',
-                                                     calc_indices=True,
+                                                     calc_indices=None,
                                                      feature_stats=feature_stats)
         except Exception as e:
             print("Failed to extract data: {}".format(e))
@@ -78,7 +82,7 @@ if __name__ == "__main__":
     elif args.geomedian:
         feature_stats = "geomedian"
 
-    extract_data(args.inputshps, args.product, output_file=args.output,
+    extract_data(args.inputshps, args.product, year = args.year, output_file=args.output,
                  feature_stats=feature_stats)
 
 
