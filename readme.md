@@ -17,11 +17,9 @@ Submit jobs using:
 for jfile in `ls *pbs`; do qsub $PWD/$jfile; done`
 ```
 
-This will create a text file for each shapefile and product. Create a single text file for each product using:
+This will create a text file for each shapefile and product.
 
-```
 To join the text files together use the `txtjoiner.sh` file. Detailed instructions are provided within the file.
-```
 
 The resulting text file will contain the mean for each feature across rows where the columns are from the input products.
 
