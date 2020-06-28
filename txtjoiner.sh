@@ -3,6 +3,7 @@
 # Set up file name variables
 FILE1="tmad_annual_stats"
 FILE2="geomedian_annual_stats"
+# Provide the column number of the duplicated column in the merged file between both products
 FEATURENUM=10
 # Grab the first row from teh first file that matches the variable
 ls *$FILE1* | head -1 | xargs head -n +1 > ${FILE1}_joined.txt

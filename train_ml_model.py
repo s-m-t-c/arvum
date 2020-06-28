@@ -3,11 +3,12 @@ import pickle
 import numpy
 from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_validate
 
 # Set up working dir
 working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/2010_2015_training_data_combined_03042020'
 
-model_input = numpy.loadtxt(os.path.join(working_dir, 'training_datatrim3.txt'), skiprows=1)
+model_input = numpy.loadtxt(os.path.join(working_dir, 'training_datatrim.txt'), skiprows=1)
     
 # Headers are
 column_names = 'classnum blue green red nir swir1 swir2 sdev edev bcdev'.split()
@@ -24,7 +25,7 @@ model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gin
                        max_depth=20, max_features='auto', max_leaf_nodes=None,
                        min_impurity_decrease=0.0, min_impurity_split=None,
                        min_samples_leaf=1, min_samples_split=3,
-                       min_weight_fraction_leaf=0.0, n_estimators=70,
+                       min_weight_fraction_leaf=0.0, n_estimators=50,
                        n_jobs=-1, oob_score=True, random_state=None, verbose=1,
                        warm_start=False)
 
@@ -34,13 +35,14 @@ model_col_indices = []
 
 for model_var in model_variables:
     model_col_indices.append(column_names_indices[model_var])
-    
-# Train model
-model.fit(model_train[:,model_col_indices], model_train[:,0])
 
-# Test model using data held back for training
-score = model.score(model_test[:,model_col_indices], model_test[:,0])
-print("Accuracy: {:.03}".format(score))
+cv_results = cross_validate(model, model_input[:,model_col_indices], model_input[:,0], cv=5)
+
+print(cv_results['test_score'])
+print(cv_results['fit_time'])
+
+# Train model
+model.fit(model_input[:,model_col_indices], model_input[:,0])
 
 # Variable importance
 for var_name, var_importance in zip(model_variables, model.feature_importances_):

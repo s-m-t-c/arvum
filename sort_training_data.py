@@ -9,7 +9,7 @@ Dan Clewley (2019-11-20)
 
 import numpy
 
-model_input = numpy.loadtxt("train_input_geomedian_tmad.txt", skiprows=1)
+model_input = numpy.loadtxt("/g/data/r78/LCCS_Aberystwyth/training_data/2010_2015_training_data_combined_03042020/training_datatrim.txt", skiprows=1)
 
 classes_list = numpy.unique(model_input[:,0])
 
@@ -32,9 +32,8 @@ for class_num in classes_list:
 model_input_subset = numpy.vstack(subset_model_inputs_list)
 
 # Save back out to a text file
-column_names = 'classnum blue green red nir swir1 swir2 BUI BSI NBI EVI NDWI MSAVI sdev edev bcdev'
+column_names = 'classnum blue green red nir swir1 swir2 sdev edev bcdev'
 numpy.savetxt("train_input_geomedian_tmad_subset.txt",
               model_input_subset, header=column_names,
               fmt=['%i', '%i', '%i', '%i', '%i', '%i', '%i',
-                   '%.4f',  '%.4f',  '%.4f',  '%.4f',  '%.4f',
-                   '%.4f',  '%.4f',  '%.4f',  '%.4f'])
+                   '%.4f',  '%.4f',  '%.4f'])

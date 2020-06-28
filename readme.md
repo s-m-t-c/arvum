@@ -4,35 +4,28 @@ This folder contains notebooks and scripts to extract training data, train an ML
 
 ## Requirements
 
-The functions to extract data for a polygon from ODC are within the [dea-notebooks](https://github.com/GeoscienceAustralia/dea-notebooks/) repo.
-They are in the `classificationtools` branch until [#443](https://github.com/GeoscienceAustralia/dea-notebooks/pull/443) is merged.
+The [functions](https://github.com/GeoscienceAustralia/dea-notebooks/blob/develop/Scripts/dea_classificationtools.py) to extract data for a polygon from ODC are within the [dea-notebooks](https://github.com/GeoscienceAustralia/dea-notebooks/) repo.
 
 ## 1. Extracting data
 
-The `extract_data_for_shp.py` script is used to extract training data. It can take a single shapefile or list as input. Flags can be used to extract the mean (`--mean`) or geomedian (`--geomedian) of each feature, the default is all pixel values in each feature.
+The `extract_data_for_shp.py` script is used to extract training data from the datacube. It can take a single shapefile or list as input. Zonal statistics can be extracted for each feature using flags such as (`--mean`). The default is all pixel values in each feature.
 
-To run on the NCI the script `make_jobs.py` will make a .pbs file for each shape file and product.
+To run on the NCI the script `make_jobs_jobs_to_extract_data.py` will make a .pbs file for each shape file and product.
 
 Submit jobs using:
 ```
 for jfile in `ls *pbs`; do qsub $PWD/$jfile; done`
 ```
 
-This will create a text file for each shapefile and product. Create a single text file for each product using:
+This will create a text file for each shapefile and product.
 
-```
-cat Cell_*geomedian_annual_stats.txt > geomedian_stats_2015.txt
-```
+To join the text files together use the `txtjoiner.sh` file. Detailed instructions are provided within the file.
 
-Then removing multiple header lines in a text editor.
-
-A single file is then created by stacking the files for each product in numpy, see code at the top of [train_ml_model.ipynb](train_ml_model.ipynb).
-
-The resulting text file with the mean of each feature for 2015 is: [training_data_2015_geomedian_mads_poly_mean.txt](training_data_2015_geomedian_mads_poly_mean.txt)
+The resulting text file will contain the mean for each feature across rows where the columns are from the input products.
 
 ## 2. Training model
 
-The model is trained using [train_ml_model.ipynb](train_ml_model.ipynb). This saves a pickled dictionary containing the model and features used to train.
+Model training is conducted using [train_ml_model.py](train_ml_model.py). This saves a dictionary containing the model and features used to train. The parameters in this script were partially tuned using a grid search cv approach.
 
 ## 3. Applying model
 
