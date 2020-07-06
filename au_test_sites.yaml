@@ -1,4 +1,4 @@
-onfig file containing extents of all the test 
+# Config file containing extents of all the test 
 # sites we are using for LCCS tests.
 Ayr:
     min_x: 1500000
