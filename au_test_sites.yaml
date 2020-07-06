@@ -101,3 +101,10 @@ Kalgoorlie:
     max_x: -972375
     min_y: -3402100
     max_y: -3366125
+
+Kangaroo Island:
+    min_x: 360600
+    max_x: 551200
+    min_y: -3945800
+    max_y: -3716500
+
