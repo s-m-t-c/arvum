@@ -11,23 +11,23 @@ import sys
 import numpy as np
 import geopandas as gpd
 
-sys.path.append("/home/jovyan/Scripts")
+sys.path.append("/g/data/u46/users/sc0554/dea-notebooks/Scripts")
 from dea_bandindices import calculate_indices
 
-sys.path.append("/home/jovyan/deafrica-sandbox-notebooks/Scripts")
-sys.path.append("/home/jovyan/deafrica-sandbox-notebooks/crop_mask")
+sys.path.append("/g/data/u46/users/sc0554/deafrica-sandbox-notebooks/Scripts")
+sys.path.append("/g/data/u46/users/sc0554/deafrica-sandbox-notebooks/crop_mask")
 from deafrica_temporal_statistics import temporal_statistics, xr_phenology
-
 # Assume all repos are checked out to same location so get relative to this.
+sys.path.append("/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2015_merged/")
 from deafrica_classificationtools_mod import collect_training_data
 
-path = "/home/jovyan/Supplementary_data/Machine_learning_with_ODC/example_training_data.shp"  # "2015_merged.shp" #
+path = "/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2015_merged/2015_merged.shp"
 field = "classnum"
 products = ["ga_ls8c_ard_3"]
 time = "2015"
 zonal_stats = None  #'median'
 resolution = (-30, 30)
-ncpus = 16
+ncpus = 48
 reduce_func = None  #'geomedian'
 band_indices = None  # ['NDVI']
 drop = False
@@ -38,10 +38,10 @@ def custom_function(ds):
     data = calculate_indices(ds, index=["NDVI"], drop=False, collection="ga_ls_3")
     #     temporal = temporal_statistics(data['NDVI'], stats=['f_mean','abs_change','complexity','central_diff'])
     temporal = xr_phenology(data["NDVI"])
-    data = data.median("time")
-    print(data)
-    output = xr.merge([data, temporal])
-    return output
+    #data = data.median("time")
+    #print(data)
+    #output = xr.merge([data, temporal])
+    return temporal
 
 
 query = {

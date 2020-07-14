@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 """
-Script to make NCI .pbs scripts to run extraction for shapefiles
+Script to make NCI .pbs scripts to run extraction for shapefiles on a tile by tile manner
 
 After running this script can submit jobs (has to be on gadi login) using:
 
 for jfile in `ls *pbs`; do qsub $PWD/$jfile; done
+
+output is joined using txtjoiner.sh
 
 """
 
@@ -15,12 +17,13 @@ import glob
 out_dir = "/g/data/r78/LCCS_Aberystwyth/training_data/2010_extracted_03042020"
 
 # Path to extraction script (assume there is a copy in output directory)
-extraction_script = os.path.join(out_dir, "extract_data_for_shp.py")
+extraction_script = os.path.join(out_dir, "extract_data_for_shp_tile.py")
 
 # Get a list of shapefiles
 shp_list = glob.glob("/g/data/r78/LCCS_Aberystwyth/training_data/2010/*shp")
 
 # Run for multiple products
+# "landsat_barest_earth" "ga_ls8c_ard_3"
 for product in ["ls5_nbart_geomedian_annual", "ls5_nbart_tmad_annual"]:
     for shp in shp_list:
         shp_basename = os.path.splitext(os.path.basename(shp))[0]
