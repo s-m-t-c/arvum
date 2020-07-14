@@ -6,7 +6,7 @@ This folder contains notebooks and scripts to extract training data, train an ML
 
 The [functions](https://github.com/GeoscienceAustralia/dea-notebooks/blob/develop/Scripts/dea_classificationtools.py) to extract data for a polygon from ODC are within the [dea-notebooks](https://github.com/GeoscienceAustralia/dea-notebooks/) repo.
 
-# Extracting data
+## 1. Extracting data
 
 1. Collect training data as shapefile
    * Labels cover LCCS classes e.g. 111, 112, 228
