@@ -5,14 +5,14 @@ import numpy
 from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_validate
-from sklearn.feature_selection import SelectFromModel, RFECV, SelectKBest
+from sklearn.feature_selection import SelectFromModel, RFECV, SelectKBest, f_classif
 import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 from itertools import compress
 # Set up working dir
-working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_20072020/'
-filename = os.path.join(working_dir, '2010_2015_median_training_data_binary.txt')
+working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_24072020/'
+filename = os.path.join(working_dir, '2010_2015_median_indices_training_data_binary.txt')
 model_input = numpy.loadtxt(filename, skiprows=1)
 random_state = 1234
 
@@ -36,8 +36,8 @@ for model_var in model_variables:
 # Modelling
 
 # Feature selection using LASSO
-feature_selection = SelectFromModel(LinearSVC(C=0.01, penalty="l1", dual=False, max_iter=10000))
-#selector = RFECV(model, step=1, cv=5)
+#feature_selection = SelectFromModel(LinearSVC(C=0.01, penalty="l1", dual=False, max_iter=10000))
+feature_selection = SelectKBest(f_classif, k=11)
 
 model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
         max_depth=50, max_features='auto', max_leaf_nodes=None,
@@ -67,11 +67,11 @@ pipe = Pipeline([('feature_selection', feature_selection),
         ])
 
 # External CV to assess accuracy
-nested_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,15], cv=outer_cv, n_jobs = -1).mean()
+nested_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,25], cv=outer_cv, n_jobs = -1).mean()
 print("Nested score:",nested_score)
 
 # Fit pipe
-pipe.fit(model_input[:,model_col_indices], model_input[:,15])
+pipe.fit(model_input[:,model_col_indices], model_input[:,25])
 
 print("Number of features:", pipe['classification'].best_estimator_.n_features_, "/", len(model_variables))
 
@@ -80,7 +80,9 @@ model_variables = list(compress(model_variables, pipe['feature_selection'].get_s
 # Variable importance
 for var_name, var_importance in zip(model_variables, pipe['classification'].best_estimator_.feature_importances_):
     print("{}: {:.04}".format(var_name, var_importance))
-    
+
+#sys.exit("end before save")
+
 ml_model_dict = {}
 
 ml_model_dict['variables'] = model_variables
@@ -89,6 +91,6 @@ ml_model_dict['classes'] = {'Cultivated' : 111,
 ml_model_dict['classifier'] = pipe['classification'].best_estimator_
 
 # Pickle model
-with open(os.path.join(working_dir, '2010_2015_median_model_indices_feature_select.pickle'), 'wb') as f:
+with open(os.path.join(working_dir, '2010_2015_median_model_indices_feature_select_kbest.pickle'), 'wb') as f:
     pickle.dump(ml_model_dict, f)
     #joblib.dump(ml_model_dict, f, compress=True)
