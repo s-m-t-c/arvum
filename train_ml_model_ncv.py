@@ -37,7 +37,7 @@ for model_var in model_variables:
 
 # Feature selection using LASSO
 #feature_selection = SelectFromModel(LinearSVC(C=0.01, penalty="l1", dual=False, max_iter=10000))
-feature_selection = SelectKBest(f_classif, k=11)
+feature_selection = SelectKBest(f_classif, k=15)
 
 model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
         max_depth=50, max_features='auto', max_leaf_nodes=None,
@@ -91,6 +91,6 @@ ml_model_dict['classes'] = {'Cultivated' : 111,
 ml_model_dict['classifier'] = pipe['classification'].best_estimator_
 
 # Pickle model
-with open(os.path.join(working_dir, '2010_2015_median_model_indices_feature_select_kbest.pickle'), 'wb') as f:
-    pickle.dump(ml_model_dict, f)
-    #joblib.dump(ml_model_dict, f, compress=True)
+with open(os.path.join(working_dir, '2010_2015_median_model_indices_feature_selection_kbest_15.joblib'), 'wb') as f:
+    #pickle.dump(ml_model_dict, f)
+    joblib.dump(ml_model_dict, f)
