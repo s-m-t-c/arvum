@@ -2,11 +2,12 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import pickle
-import numpy
+import numpy as np 
 from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_validate
 from sklearn.feature_selection import SelectFromModel, RFECV, SelectKBest, f_classif
+from sklearn.metrics import f1_score, balanced_accuracy_score
 import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
@@ -16,9 +17,10 @@ from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_s
 
 # Set up working dir
 working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_23102020/'
-filename = os.path.join(working_dir, '2015_median_training_data_indices_binary.txt')
-model_input = numpy.loadtxt(filename, skiprows=1)
+filename = os.path.join(working_dir, '2015_median_training_data_binary_test.txt')
+model_input = np.loadtxt(filename, skiprows=1)
 random_state = 1234
+ncpus = 48
 
 coordinates = model_input[:,-3:-1]
 
@@ -32,29 +34,30 @@ column_names_indices = {}
 for col_num, var_name in enumerate(column_names):
     column_names_indices[var_name] = col_num
 
-model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
+model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI']#, 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
 
 model_col_indices = []
 
 for model_var in model_variables:
     model_col_indices.append(column_names_indices[model_var])
 
+# Seperate dependent and independent variables
 X = model_input[:,model_col_indices]
 y = model_input[:,-1]
 print(y[1:10])
 print(X[1,:])
         
-# Spatial grouping
-ncpus = 48
-outer_cv_splits = 10
+# Spatial k fold
+outer_cv_splits = 5
 inner_cv_splits = 5
-test_size = 0.15
+test_size = 0.20
 cluster_method = 'Hierarchical'
 max_distance = 50000
 n_clusters=None
 kfold_method = 'SpatialKFold'
 balance = 10
 metric='f1'
+
 #create clustes
 spatial_groups = spatial_clusters(coordinates=coordinates,
         method=cluster_method,
@@ -68,7 +71,6 @@ plt.title('Spatial clusters of training data')
 plt.ylabel('y')
 plt.xlabel('x')
 plt.savefig('spatialcluster.png')
-
 
 # Modelling
 
@@ -118,7 +120,6 @@ for train_index, test_index in outer_cv.split(coordinates):
     X_tr, X_tt = X[train_index, :], X[test_index, :]
     y_tr, y_tt = y[train_index], y[test_index]
     coords = coordinates[train_index]
-
     # inner split on data within outer split
     inner_cv = SKCV(
         coordinates=coords,
@@ -130,7 +131,7 @@ for train_index, test_index in outer_cv.split(coordinates):
         balance=balance,
     )
     
-    #perfrom grid search on hyperparameters
+    #perform grid search on hyperparameters
     clf = GridSearchCV(
         estimator=model,
         param_grid=param_grid,
@@ -149,17 +150,28 @@ for train_index, test_index in outer_cv.split(coordinates):
     # ROC AUC
     probs = best_model.predict_proba(X_tt)
     probs = probs[:, 1]
-    fpr, tpr, thresholds = roc_curve(y_tt, probs)
-    auc_ = auc(fpr, tpr)
-    roc_auc.append(auc_)
+#    fpr, tpr, thresholds = roc_curve(y_tt, probs)
+#    auc_ = auc(fpr, tpr)
+#    roc_auc.append(auc_)
     # Overall accuracy
-    ac = accuracy_score(y_tt, pred)
+    ac = balanced_accuracy_score(y_tt, pred)
     acc.append(ac)
     # F1 scores
     f1_ = f1_score(y_tt, pred)
     f1.append(f1_)
-print(acc)
-print(f1)
+
+print("=== Nested Spatial K-Fold Cross-Validation Scores ===")
+print("Mean balanced accuracy: "+ str(round(np.mean(acc), 2)))
+print("Std balanced accuracy: "+ str(round(np.std(acc), 2)))
+print('\n')
+print("Mean F1: "+ str(round(np.mean(f1), 2)))
+
+print("The most accurate combination of tested parameters is: ")
+print(clf.best_params_)
+print('\n')
+print("The "+metric+" score using these parameters is: ")
+print(round(clf.best_score_, 2))
+
 #cv_model = GridSearchCV(estimator=model, param_grid=param_grid, cv= inner_cv, refit=True)
 
 # Pipe selected features into hyper parameter search
