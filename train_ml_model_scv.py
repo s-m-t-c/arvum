@@ -34,7 +34,7 @@ column_names_indices = {}
 for col_num, var_name in enumerate(column_names):
     column_names_indices[var_name] = col_num
 
-model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI']#, 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
+model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
 
 model_col_indices = []
 
@@ -48,8 +48,8 @@ print(y[1:10])
 print(X[1,:])
         
 # Spatial k fold
-outer_cv_splits = 5
-inner_cv_splits = 5
+outer_cv_splits = 10
+inner_cv_splits = 10
 test_size = 0.20
 cluster_method = 'Hierarchical'
 max_distance = 50000
@@ -65,7 +65,7 @@ spatial_groups = spatial_clusters(coordinates=coordinates,
         n_groups=n_clusters)
 
 plt.figure(figsize=(6,8))
-plt.scatter(model_input[:, -1], model_input[:, -2], c=spatial_groups,
+plt.scatter(coordinates[:,0], coordinates[:, 1], c=spatial_groups,
                     s=50, cmap='viridis');
 plt.title('Spatial clusters of training data')
 plt.ylabel('y')
@@ -88,9 +88,13 @@ model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gin
 
 # Hyperparameter grid to explore
 param_grid = { 
-            'max_depth': [20,30, 50],
-                'class_weight': [None, 'balanced', 'balanced_subsample'],
-                }
+            'max_depth': [20,30, 50, 100],
+            'class_weight': [None, 'balanced', 'balanced_subsample'],
+            'max_features': ['auto', 'sqrt', 'log'],
+            'criterion': ['gini','entropy'],
+            'oob_score': ['True','False'],
+            'ccp_alpha': [0.0,0.25,0.5]
+            }
 
 # To be used within GridSearch
 #inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_state)
@@ -165,6 +169,29 @@ print("Mean balanced accuracy: "+ str(round(np.mean(acc), 2)))
 print("Std balanced accuracy: "+ str(round(np.std(acc), 2)))
 print('\n')
 print("Mean F1: "+ str(round(np.mean(f1), 2)))
+
+#generate n_splits of train-test_split
+ss = SKCV(
+        coordinates=coordinates,
+        max_distance=max_distance,
+        n_groups=n_clusters,
+        n_splits=outer_cv_splits,
+        cluster_method=cluster_method,
+        kfold_method=kfold_method,
+        test_size=test_size,
+        balance=balance
+        )
+
+
+#instatiate a gridsearchCV
+clf = GridSearchCV(model,
+                   param_grid,
+                   scoring=metric,
+                   verbose=1,
+                   cv=ss.split(coordinates),
+                   n_jobs=ncpus)
+
+clf.fit(X, y)
 
 print("The most accurate combination of tested parameters is: ")
 print(clf.best_params_)
