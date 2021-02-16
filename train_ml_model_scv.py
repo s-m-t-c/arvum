@@ -17,7 +17,7 @@ from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_s
 
 # Set up working dir
 working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_23102020/'
-filename = os.path.join(working_dir, '2015_median_training_data_binary_test.txt')
+filename = os.path.join(working_dir, '2010_2015_training_data_binary.txt')
 model_input = np.loadtxt(filename, skiprows=1)
 random_state = 1234
 ncpus = 48
@@ -34,7 +34,7 @@ column_names_indices = {}
 for col_num, var_name in enumerate(column_names):
     column_names_indices[var_name] = col_num
 
-model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
+model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR']#, 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
 
 model_col_indices = []
 
@@ -56,6 +56,7 @@ max_distance = 50000
 n_clusters=None
 kfold_method = 'SpatialKFold'
 balance = 10
+# Choose metric that reflects the tradeoffs desired in product
 metric='f1'
 
 #create clustes
@@ -76,7 +77,11 @@ plt.savefig('spatialcluster.png')
 
 # Feature selection using LASSO
 #feature_selection = SelectFromModel(LinearSVC(C=0.01, penalty="l1", dual=False, max_iter=10000))
-#feature_selection = SelectKBest(f_classif, k=15)
+feature_selection = SelectKBest(f_classif, k=20)
+
+selected = np.array(model_variables)[feature_selection.fit(X,y).get_support()]
+
+print(selected)
 
 model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
         max_depth=50, max_features='auto', max_leaf_nodes=None,
@@ -84,23 +89,18 @@ model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gin
                        min_samples_leaf=1, min_samples_split=3,
                        min_weight_fraction_leaf=0.0, n_estimators=150,
                        n_jobs=-1, oob_score=True, random_state=random_state, verbose=0,
-                       warm_start=False)
+                       )
 
 # Hyperparameter grid to explore
 param_grid = { 
-            'max_depth': [20,30, 50, 100],
+            'max_depth': [20, 50, 100],
             'class_weight': [None, 'balanced', 'balanced_subsample'],
-            'max_features': ['auto', 'sqrt', 'log'],
-            'criterion': ['gini','entropy'],
+            'max_features': ['auto', 'sqrt'],
+            # entropy is slightly slower to compute and should be similar in 98% of cases
+            'criterion': ['gini'],
             'oob_score': ['True','False'],
-            'ccp_alpha': [0.0,0.25,0.5]
+#            'ccp_alpha': [0.0,0.25,0.5]
             }
-
-# To be used within GridSearch
-#inner_cv = KFold(n_splits=5, shuffle=True, random_state=random_state)
-
-# To be used in outer CV (you asked for 10)
-#outer_cv = KFold(n_splits=5, shuffle=True, random_state=random_state)
 
 # create outer k-fold splits
 outer_cv = SKCV(
@@ -167,7 +167,7 @@ for train_index, test_index in outer_cv.split(coordinates):
 print("=== Nested Spatial K-Fold Cross-Validation Scores ===")
 print("Mean balanced accuracy: "+ str(round(np.mean(acc), 2)))
 print("Std balanced accuracy: "+ str(round(np.std(acc), 2)))
-print('\n')
+#print('\n')
 print("Mean F1: "+ str(round(np.mean(f1), 2)))
 
 #generate n_splits of train-test_split
@@ -191,46 +191,42 @@ clf = GridSearchCV(model,
                    cv=ss.split(coordinates),
                    n_jobs=ncpus)
 
-clf.fit(X, y)
+#clf.fit(X, y)
 
-print("The most accurate combination of tested parameters is: ")
-print(clf.best_params_)
-print('\n')
-print("The "+metric+" score using these parameters is: ")
-print(round(clf.best_score_, 2))
 
 #cv_model = GridSearchCV(estimator=model, param_grid=param_grid, cv= inner_cv, refit=True)
 
 # Pipe selected features into hyper parameter search
-#pipe = Pipeline([('feature_selection', feature_selection),
-#        ('classification', cv_model)
-#        ])
+pipe = Pipeline([('feature_selection', feature_selection),
+        ('classification', clf)
+        ])
 
 # External CV to assess accuracy
 #nested_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,25], cv=outer_cv, n_jobs = -1).mean()
 #print("Nested score:",nested_score)
 
 # Fit pipe
-#pipe.fit(model_input[:,model_col_indices], model_input[:,25])
+pipe.fit(X, y)
 
-#print("Number of features:", pipe['classification'].best_estimator_.n_features_, "/", len(model_variables))
+print("Number of features:", pipe['classification'].best_estimator_.n_features_, "/", len(model_variables))
 
-#model_variables = list(compress(model_variables, pipe['feature_selection'].get_support()))
+model_variables = list(compress(model_variables, pipe['feature_selection'].get_support()))
 
 # Variable importance
-#for var_name, var_importance in zip(model_variables, pipe['classification'].best_estimator_.feature_importances_):
- #   print("{}: {:.04}".format(var_name, var_importance))
+for var_name, var_importance in zip(model_variables, pipe['classification'].best_estimator_.feature_importances_):
+    print("{}: {:.04}".format(var_name, var_importance))
 
-#sys.exit("end before save")
+print("The most accurate combination of tested parameters is: ")
+print(pipe['classification'].best_params_)
+print('\n')
+print("The "+metric+" score using these parameters is: ")
+print(round(pipe['classification'].best_score_, 2))
 
-#ml_model_dict = {}
-#
-#ml_model_dict['variables'] = model_variables
-#ml_model_dict['classes'] = {'Cultivated' : 111,
-#                            'Not Cultivated' : 0}
-#ml_model_dict['classifier'] = pipe['classification'].best_estimator_
-#
-## Pickle model
-#with open(os.path.join(working_dir, '2010_2015_median_model_indices_feature_selection_kbest_15.joblib'), 'wb') as f:
-#    #pickle.dump(ml_model_dict, f)
-#    joblib.dump(ml_model_dict, f)
+ml_model_dict = {}
+ml_model_dict['variables'] = model_variables
+ml_model_dict['classes'] = {'Cultivated' : 111,
+                            'Not Cultivated' : 0}
+ml_model_dict['classifier'] = clf.best_estimator_
+## Save model
+with open(os.path.join(working_dir, '2010_2015_median_model_indices.joblib'), 'wb') as f:
+    joblib.dump(ml_model_dict, f)
