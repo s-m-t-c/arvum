@@ -10,6 +10,9 @@ import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 from itertools import compress
+#sys.path.append('/g/data/u46/users/sc0554/dea-notebooks/Scripts')
+#from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_split
+
 # Set up working dir
 working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_24072020/'
 filename = os.path.join(working_dir, '2010_2015_median_indices_training_data_binary.txt')

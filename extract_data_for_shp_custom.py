@@ -16,15 +16,17 @@ sys.path.append("/g/data/u46/users/sc0554/dea-notebooks/Scripts")
 from dea_bandindices import calculate_indices
 import xarray as xr
 from dea_classificationtools import collect_training_data
+from datacube.utils.geometry import assign_crs
+from odc.algo import xr_reproject
 
-path = "/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_merged/2010_merged.shp"
+time = "2010"
+path = f"/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/{time}_merged/{time}_merged.shp"
 field = "classnum"
 # Need ls5 for 2010 and ls8 for 2015+
 products = ["ls5_nbart_geomedian_annual"]
-time = "2010"
 zonal_stats = 'median'
 resolution = (-30, 30)
-ncpus = 1 
+ncpus = 48 
 reduce_func = None  #'geomedian'
 band_indices = None  # ['NDVI']
 drop = False
@@ -38,7 +40,12 @@ def custom_function(ds):
     # Need ls5 for 2010 and ls8 for 2015+
     mad = dc.load(product='ls5_nbart_tmad_annual', like=ds)
     fc = dc.load(product='fc_percentile_albers_annual', like=ds)
-    output = xr.merge([gm, mad, fc])
+  #  rainfall = 
+    chirps1 = assign_crs(xr.open_rasterio('/g/data/r78/LCCS_Aberystwyth/layers/CHPclim_jan_jun_cumulative_rainfall.nc'), crs='epsg:4326')
+    chirps2 = assign_crs(xr.open_rasterio('/g/data/r78/LCCS_Aberystwyth/layers/CHPclim_jul_dec_cumulative_rainfall.nc'), crs='epsg:4326')
+    chirps1 = xr_reproject(chirps1,ds.geobox,"bilinear").rename('chirps1')
+    chirps2 = xr_reproject(chirps2,ds.geobox,"bilinear").rename('chirps2')
+    output = xr.merge([gm, mad, fc, chirps1, chirps2])
     return output
 
 query = {
@@ -64,6 +71,6 @@ column_names, model_input = collect_training_data(
 )
 
 print(model_input.shape)
-output_file = "2010_median_training_data_indices.txt"
+output_file = f"{time}_median_training_data_indices.txt"
 
 np.savetxt(output_file, model_input, header=" ".join(column_names), fmt="%4f")

@@ -16,8 +16,8 @@ sys.path.append('/g/data/u46/users/sc0554/dea-notebooks/Scripts')
 from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_split
 
 # Set up working dir
-working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_23102020/'
-filename = os.path.join(working_dir, '2010_2015_training_data_binary.txt')
+working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_17022021/'
+filename = os.path.join(working_dir, '2010_2015_median_training_data_binary_chirps.txt')
 model_input = np.loadtxt(filename, skiprows=1)
 random_state = 1234
 ncpus = 48
@@ -77,7 +77,7 @@ plt.savefig('spatialcluster.png')
 
 # Feature selection using LASSO
 #feature_selection = SelectFromModel(LinearSVC(C=0.01, penalty="l1", dual=False, max_iter=10000))
-feature_selection = SelectKBest(f_classif, k=20)
+feature_selection = SelectKBest(f_classif, k="all")
 
 selected = np.array(model_variables)[feature_selection.fit(X,y).get_support()]
 
