@@ -10,6 +10,7 @@ Inputs custom function for temporal statistics calculation or multiple products
 import argparse
 import sys
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 import datacube
 sys.path.append("/g/data/u46/users/sc0554/dea-notebooks/Scripts")
@@ -19,14 +20,14 @@ from dea_classificationtools import collect_training_data
 from datacube.utils.geometry import assign_crs
 from odc.algo import xr_reproject
 
-time = "2010"
+time = "2015"
 path = f"/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/{time}_merged/{time}_merged.shp"
 field = "classnum"
 # Need ls5 for 2010 and ls8 for 2015+
-products = ["ls5_nbart_geomedian_annual"]
+products = ["ls8_nbart_geomedian_annual"]
 zonal_stats = 'median'
 resolution = (-30, 30)
-ncpus = 48 
+ncpus = 8 
 reduce_func = None  #'geomedian'
 band_indices = None  # ['NDVI']
 drop = False
@@ -38,14 +39,14 @@ def custom_function(ds):
     gm = calculate_indices(ds, index=["NDVI", "MNDWI", "BAI", "BUI", "BSI", "TCG", "TCW", "TCB", "NDMI", "LAI", "EVI", "AWEI_sh", "BAEI", "NDSI", "SAVI", "NBR"], drop=False, collection="ga_ls_2")
     dc = datacube.Datacube(app='custom_function')
     # Need ls5 for 2010 and ls8 for 2015+
-    mad = dc.load(product='ls5_nbart_tmad_annual', like=ds)
-    fc = dc.load(product='fc_percentile_albers_annual', like=ds)
-  #  rainfall = 
+    mad = dc.load(product='ls8_nbart_tmad_annual', time=time, like=ds)
+    fc = dc.load(product='fc_percentile_albers_annual', time=time, like=ds)
     chirps1 = assign_crs(xr.open_rasterio('/g/data/r78/LCCS_Aberystwyth/layers/CHPclim_jan_jun_cumulative_rainfall.nc'), crs='epsg:4326')
     chirps2 = assign_crs(xr.open_rasterio('/g/data/r78/LCCS_Aberystwyth/layers/CHPclim_jul_dec_cumulative_rainfall.nc'), crs='epsg:4326')
     chirps1 = xr_reproject(chirps1,ds.geobox,"bilinear").rename('chirps1')
     chirps2 = xr_reproject(chirps2,ds.geobox,"bilinear").rename('chirps2')
-    output = xr.merge([gm, mad, fc, chirps1, chirps2])
+    chirps = chirps1 + chirps2
+    output = xr.merge([gm, mad, fc, chirps1, chirps2, chirps])
     return output
 
 query = {
@@ -61,7 +62,7 @@ column_names, model_input = collect_training_data(
     dc_query=query,
     ncpus=ncpus,
     return_coords=return_coords,
-    custom_func=custom_function,
+#    custom_func=custom_function,
     field=field,
     calc_indices=band_indices,
     reduce_func=reduce_func,
@@ -71,6 +72,10 @@ column_names, model_input = collect_training_data(
 )
 
 print(model_input.shape)
-output_file = f"{time}_median_training_data_indices.txt"
+output_file = f"{time}_training_data.txt"
 
 np.savetxt(output_file, model_input, header=" ".join(column_names), fmt="%4f")
+print("binarizing data")
+data = pd.read_csv(output_file, header-0, sep=" ")
+data['binary_class'] = np.where(data['classnum'] == 111, 1, 0)
+data.to_csv(f"{time}_training_data_binary.txt")
