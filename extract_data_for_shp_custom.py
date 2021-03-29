@@ -22,12 +22,13 @@ from odc.algo import xr_reproject
 
 time = "2015"
 path = f"/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/{time}_merged/{time}_merged.shp"
+#path = f"/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/{time}/Cell_16_-33_2015_refactored.shp"
 field = "classnum"
 # Need ls5 for 2010 and ls8 for 2015+
 products = ["ls8_nbart_geomedian_annual"]
 zonal_stats = 'median'
 resolution = (-30, 30)
-ncpus = 8 
+ncpus = 30 
 reduce_func = None  #'geomedian'
 band_indices = None  # ['NDVI']
 drop = False
@@ -46,6 +47,8 @@ def custom_function(ds):
     chirps1 = xr_reproject(chirps1,ds.geobox,"bilinear").rename('chirps1')
     chirps2 = xr_reproject(chirps2,ds.geobox,"bilinear").rename('chirps2')
     chirps = chirps1 + chirps2
+    chirps = chirps.rename("chirps")
+    print(chirps1, chirps2, chirps)
     output = xr.merge([gm, mad, fc, chirps1, chirps2, chirps])
     return output
 
@@ -62,7 +65,7 @@ column_names, model_input = collect_training_data(
     dc_query=query,
     ncpus=ncpus,
     return_coords=return_coords,
-#    custom_func=custom_function,
+    custom_func=custom_function,
     field=field,
     calc_indices=band_indices,
     reduce_func=reduce_func,
@@ -75,7 +78,7 @@ print(model_input.shape)
 output_file = f"{time}_training_data.txt"
 
 np.savetxt(output_file, model_input, header=" ".join(column_names), fmt="%4f")
-print("binarizing data")
-data = pd.read_csv(output_file, header-0, sep=" ")
-data['binary_class'] = np.where(data['classnum'] == 111, 1, 0)
-data.to_csv(f"{time}_training_data_binary.txt")
+#print("binarizing data")
+#data = pd.read_csv(output_file, header-0, sep=" ")
+#data['binary_class'] = np.where(data['#'] == 111, 1, 0)
+#data.to_csv(f"{time}_training_data_binary.txt")
