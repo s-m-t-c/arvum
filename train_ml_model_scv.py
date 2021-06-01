@@ -7,22 +7,22 @@ from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_validate
 from sklearn.feature_selection import SelectFromModel, RFECV, SelectKBest, f_classif
-from sklearn.metrics import f1_score, balanced_accuracy_score
+from sklearn.metrics import f1_score, balanced_accuracy_score, make_scorer
 import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 from itertools import compress
-sys.path.append('/g/data/u46/users/sc0554/dea-notebooks/Scripts')
+sys.path.append('/home/jovyan/Scripts')
 from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_split
 
 # Set up working dir
-working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_17022021/'
-filename = os.path.join(working_dir, '2010_2015_median_training_data_binary_chirps.txt')
+working_dir = '/home/jovyan/development/training_data/'
+filename = os.path.join(working_dir, '2010_2015_training_data_binary_agcd.txt')
 model_input = np.loadtxt(filename, skiprows=1)
 random_state = 1234
-ncpus = 48
+ncpus = 15
 
-coordinates = model_input[:,-3:-1]
+coordinates = model_input[:,-4:-2]
 
 # Set up header and input features
 with open(filename, 'r') as file:
@@ -34,7 +34,12 @@ column_names_indices = {}
 for col_num, var_name in enumerate(column_names):
     column_names_indices[var_name] = col_num
 
-model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR']#, 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10' ,'BS_PC_50', 'PV_PC_50' ,'NPV_PC_50' ,'BS_PC_90', 'PV_PC_90', 'NPV_PC_90']
+#model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'chirps']
+
+# variables chosen by logistic regression + RFECV + manually adding chirps
+# model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'MNDWI', 'BUI', 'BSI', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10', 'BS_PC_50', 'PV_PC_50', 'NPV_PC_50', 'BS_PC_90', 'PV_PC_90', 'NPV_PC_90', 'agcd']
+
+model_variables = ['red', 'edev', 'sdev', 'bcdev', 'NDVI', 'MNDWI', 'BUI', 'BSI', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'BS_PC_50', 'PV_PC_50', 'BS_PC_90', 'PV_PC_90', 'agcd']
 
 model_col_indices = []
 
@@ -44,34 +49,34 @@ for model_var in model_variables:
 # Seperate dependent and independent variables
 X = model_input[:,model_col_indices]
 y = model_input[:,-1]
-print(y[1:10])
-print(X[1,:])
+# y = model_input[:,0]
         
 # Spatial k fold
 outer_cv_splits = 10
-inner_cv_splits = 10
+inner_cv_splits = 5
 test_size = 0.20
 cluster_method = 'Hierarchical'
 max_distance = 50000
 n_clusters=None
 kfold_method = 'SpatialKFold'
 balance = 10
+
 # Choose metric that reflects the tradeoffs desired in product
 metric='f1'
 
 #create clustes
-spatial_groups = spatial_clusters(coordinates=coordinates,
-        method=cluster_method,
-        max_distance=max_distance,
-        n_groups=n_clusters)
+# spatial_groups = spatial_clusters(coordinates=coordinates,
+#         method=cluster_method,
+#         max_distance=max_distance,
+#         n_groups=n_clusters)
 
-plt.figure(figsize=(6,8))
-plt.scatter(coordinates[:,0], coordinates[:, 1], c=spatial_groups,
-                    s=50, cmap='viridis');
-plt.title('Spatial clusters of training data')
-plt.ylabel('y')
-plt.xlabel('x')
-plt.savefig('spatialcluster.png')
+# plt.figure(figsize=(6,8))
+# plt.scatter(coordinates[:,0], coordinates[:, 1], c=spatial_groups,
+#                     s=50, cmap='viridis');
+# plt.title('Spatial clusters of training data')
+# plt.ylabel('y')
+# plt.xlabel('x')
+# plt.savefig('spatialcluster.png')
 
 # Modelling
 
@@ -139,7 +144,7 @@ for train_index, test_index in outer_cv.split(coordinates):
     clf = GridSearchCV(
         estimator=model,
         param_grid=param_grid,
-        scoring=metric,
+        scoring=make_scorer(f1_score, pos_label=111),
         n_jobs=ncpus,
         cv=inner_cv.split(coords),
         refit=True,
@@ -161,7 +166,7 @@ for train_index, test_index in outer_cv.split(coordinates):
     ac = balanced_accuracy_score(y_tt, pred)
     acc.append(ac)
     # F1 scores
-    f1_ = f1_score(y_tt, pred)
+    f1_ = f1_score(y_tt, pred, pos_label=111)
     f1.append(f1_)
 
 print("=== Nested Spatial K-Fold Cross-Validation Scores ===")
@@ -186,15 +191,10 @@ ss = SKCV(
 #instatiate a gridsearchCV
 clf = GridSearchCV(model,
                    param_grid,
-                   scoring=metric,
+                   scoring=make_scorer(f1_score, pos_label=111),
                    verbose=1,
                    cv=ss.split(coordinates),
                    n_jobs=ncpus)
-
-#clf.fit(X, y)
-
-
-#cv_model = GridSearchCV(estimator=model, param_grid=param_grid, cv= inner_cv, refit=True)
 
 # Pipe selected features into hyper parameter search
 pipe = Pipeline([('feature_selection', feature_selection),
@@ -228,5 +228,5 @@ ml_model_dict['classes'] = {'Cultivated' : 111,
                             'Not Cultivated' : 0}
 ml_model_dict['classifier'] = clf.best_estimator_
 ## Save model
-with open(os.path.join(working_dir, '2010_2015_median_model_indices.joblib'), 'wb') as f:
+with open(os.path.join(working_dir, '2010_2015_model_agcd.joblib'), 'wb') as f:
     joblib.dump(ml_model_dict, f)
