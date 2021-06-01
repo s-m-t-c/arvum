@@ -12,6 +12,7 @@ import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 from itertools import compress
+import time
 sys.path.append('/home/jovyan/Scripts')
 from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_split
 
@@ -231,5 +232,6 @@ ml_model_dict['classes'] = {'Cultivated' : 111,
 ml_model_dict['classifier'] = clf.best_estimator_
 ml_model_dict['metrics'] = f"f1: {str(round(np.mean(f1), 2))}"
 ## Save model
-with open(os.path.join(working_dir, '2010_2015_model_agcd.joblib'), 'wb') as f:
+timestr = time.strftime("%Y%m%d-%H%M%S")
+with open(os.path.join(working_dir, f'{timestr}.joblib'), 'wb') as f:
     joblib.dump(ml_model_dict, f)
