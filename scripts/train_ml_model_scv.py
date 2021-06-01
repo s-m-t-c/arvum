@@ -17,15 +17,16 @@ from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_s
 
 # Set up working dir
 working_dir = '/home/jovyan/development/training_data/'
-filename = os.path.join(working_dir, '2010_2015_training_data_binary_agcd.txt')
-model_input = np.loadtxt(filename, skiprows=1)
+filename =  '2010_2015_training_data_binary_agcd.txt'
+filepath = os.path.join(working_dir, filename)
+model_input = np.loadtxt(filepath, skiprows=1)
 random_state = 1234
 ncpus = 15
 
 coordinates = model_input[:,-4:-2]
 
 # Set up header and input features
-with open(filename, 'r') as file:
+with open(filepath, 'r') as file:
     header = file.readline()
 column_names = header.split()
 
@@ -223,10 +224,12 @@ print("The "+metric+" score using these parameters is: ")
 print(round(pipe['classification'].best_score_, 2))
 
 ml_model_dict = {}
+ml_model_dict['input-data'] = filename
 ml_model_dict['variables'] = model_variables
 ml_model_dict['classes'] = {'Cultivated' : 111,
                             'Not Cultivated' : 0}
 ml_model_dict['classifier'] = clf.best_estimator_
+ml_model_dict['metrics'] = f"f1: {str(round(np.mean(f1), 2))}"
 ## Save model
 with open(os.path.join(working_dir, '2010_2015_model_agcd.joblib'), 'wb') as f:
     joblib.dump(ml_model_dict, f)
