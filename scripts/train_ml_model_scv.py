@@ -7,7 +7,7 @@ from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_validate
 from sklearn.feature_selection import SelectFromModel, RFECV, SelectKBest, f_classif
-from sklearn.metrics import f1_score, balanced_accuracy_score, make_scorer
+from sklearn.metrics import f1_score, balanced_accuracy_score, make_scorer, roc_curve, roc_auc_score, auc
 import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
@@ -17,10 +17,10 @@ sys.path.append('/home/jovyan/Scripts')
 from dea_classificationtools import spatial_clusters, SKCV, spatial_train_test_split
 
 # Set up working dir
-working_dir = '/home/jovyan/development/training_data/'
+working_dir = '../data/dea_landcover/'
 filename =  '2010_2015_training_data_binary_agcd.txt'
 filepath = os.path.join(working_dir, filename)
-model_input = np.loadtxt(filepath, skiprows=1)
+model_input = np.loadtxt(filepath, skiprows=1)#[:,1:10000]
 random_state = 1234
 ncpus = 15
 
@@ -41,7 +41,7 @@ for col_num, var_name in enumerate(column_names):
 # variables chosen by logistic regression + RFECV + manually adding chirps
 # model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'MNDWI', 'BUI', 'BSI', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'NPV_PC_10', 'BS_PC_50', 'PV_PC_50', 'NPV_PC_50', 'BS_PC_90', 'PV_PC_90', 'NPV_PC_90', 'agcd']
 
-model_variables = ['red', 'edev', 'sdev', 'bcdev', 'NDVI', 'MNDWI', 'BUI', 'BSI', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'BS_PC_50', 'PV_PC_50', 'BS_PC_90', 'PV_PC_90', 'agcd']
+model_variables = ['red', 'edev', 'sdev', 'bcdev', 'NDVI', 'MNDWI', 'BUI', 'BSI', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI', 'NBR', 'BS_PC_10', 'PV_PC_10', 'BS_PC_50', 'PV_PC_50', 'BS_PC_90', 'PV_PC_90', 'chirps']
 
 model_col_indices = []
 
@@ -161,9 +161,9 @@ for train_index, test_index in outer_cv.split(coordinates):
     # ROC AUC
     probs = best_model.predict_proba(X_tt)
     probs = probs[:, 1]
-#    fpr, tpr, thresholds = roc_curve(y_tt, probs)
-#    auc_ = auc(fpr, tpr)
-#    roc_auc.append(auc_)
+    fpr, tpr, thresholds = roc_curve(y_tt, probs, pos_label=111)
+    auc_ = auc(fpr, tpr)
+    roc_auc.append(auc_)
     # Overall accuracy
     ac = balanced_accuracy_score(y_tt, pred)
     acc.append(ac)
@@ -176,7 +176,17 @@ print("Mean balanced accuracy: "+ str(round(np.mean(acc), 2)))
 print("Std balanced accuracy: "+ str(round(np.std(acc), 2)))
 #print('\n')
 print("Mean F1: "+ str(round(np.mean(f1), 2)))
+print("Mean ROC_auc" + str(round(np.mean(roc_auc), 2)))
 
+plt.title('Receiver Operating Characteristic - Cultivated 2015')
+plt.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % auc_)
+plt.legend(loc = 'lower right')
+plt.plot([0, 1], [0, 1],'r--')
+plt.xlim([0, 1])
+plt.ylim([0, 1])
+plt.ylabel('True Positive Rate')
+plt.xlabel('False Positive Rate')
+plt.savefig('roccurve.png')
 #generate n_splits of train-test_split
 ss = SKCV(
         coordinates=coordinates,
