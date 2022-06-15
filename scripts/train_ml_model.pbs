@@ -10,6 +10,6 @@
 module use /g/data/v10/public/modules/modulefiles
 module load dea
 
-python3 train_ml_model_scv.py
+python3 train_ml_model_ncv.py
 
     

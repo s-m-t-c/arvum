@@ -6,6 +6,7 @@ from sklearn.model_selection import KFold, GridSearchCV, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_validate
 from sklearn.feature_selection import SelectFromModel, RFECV, SelectKBest, f_classif
+from sklearn.metrics import f1_score, balanced_accuracy_score, make_scorer, roc_curve, roc_auc_score, auc
 import joblib
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
@@ -16,6 +17,8 @@ from itertools import compress
 # Set up working dir
 working_dir = '/g/data/r78/LCCS_Aberystwyth/training_data/cultivated/2010_2015_training_data_combined_24072020/'
 filename = os.path.join(working_dir, '2010_2015_median_indices_training_data_binary.txt')
+# working_dir = '/g/data/u46/users/sc0554/'
+# filename = os.path.join(working_dir, 'testtd.txt')
 model_input = numpy.loadtxt(filename, skiprows=1)
 random_state = 1234
 
@@ -29,7 +32,10 @@ column_names_indices = {}
 for col_num, var_name in enumerate(column_names):
     column_names_indices[var_name] = col_num
 
-model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI']
+# model_variables = ['blue','red','green','nir','swir1','swir2','edev','sdev','bcdev', 'NDVI', 'MNDWI', 'BAI', 'BUI', 'BSI', 'TCG', 'TCW', 'TCB', 'NDMI', 'LAI', 'EVI', 'AWEI_sh', 'BAEI', 'NDSI', 'SAVI']
+
+# original pickle variables
+model_variables = ['nir', 'edev', 'sdev', 'NDVI', 'BUI', 'BSI', 'TCG', 'NDMI', 'LAI', 'EVI', 'SAVI']
 
 model_col_indices = []
 
@@ -40,11 +46,12 @@ for model_var in model_variables:
 
 # Feature selection using LASSO
 #feature_selection = SelectFromModel(LinearSVC(C=0.01, penalty="l1", dual=False, max_iter=10000))
-feature_selection = SelectKBest(f_classif, k=15)
+# set to all
+feature_selection = SelectKBest(f_classif, k='all')
 
 model = RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
         max_depth=50, max_features='auto', max_leaf_nodes=None,
-                       min_impurity_decrease=0.0, min_impurity_split=None,
+                   #    min_impurity_decrease=0.0, min_impurity_split=None,
                        min_samples_leaf=1, min_samples_split=3,
                        min_weight_fraction_leaf=0.0, n_estimators=150,
                        n_jobs=-1, oob_score=True, random_state=random_state, verbose=0,
@@ -70,8 +77,14 @@ pipe = Pipeline([('feature_selection', feature_selection),
         ])
 
 # External CV to assess accuracy
-nested_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,25], cv=outer_cv, n_jobs = -1).mean()
-print("Nested score:",nested_score)
+# nested_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,25], cv=outer_cv, n_jobs = -1).mean()
+# print("Nested score:",nested_score)
+
+acc_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,25], cv=outer_cv, n_jobs = -1, scoring = 'accuracy').mean()
+print("accuracy score:",acc_score)
+
+f1_score = cross_val_score(pipe, X=model_input[:,model_col_indices], y=model_input[:,25], cv=outer_cv, n_jobs = -1, scoring=make_scorer(f1_score, pos_label=111)).mean()
+print("F1 nested:",f1_score)
 
 # Fit pipe
 pipe.fit(model_input[:,model_col_indices], model_input[:,25])
@@ -92,6 +105,8 @@ ml_model_dict['variables'] = model_variables
 ml_model_dict['classes'] = {'Cultivated' : 111,
                             'Not Cultivated' : 0}
 ml_model_dict['classifier'] = pipe['classification'].best_estimator_
+ml_model_dict['accuracy']=acc_score
+ml_model_dict['f1']=f1_score
 
 # Pickle model
 with open(os.path.join(working_dir, '2010_2015_median_model_indices_feature_selection_kbest_15.joblib'), 'wb') as f:
