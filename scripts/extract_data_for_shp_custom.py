@@ -7,9 +7,11 @@ Inputs custom function for temporal statistics calculation or multiple products
 """
 
 # Load modules
+
 import os
 import datacube
 import numpy as np
+import pandas as pd
 import xarray as xr
 import subprocess as sp
 import geopandas as gpd
@@ -18,6 +20,7 @@ from datacube.utils.geometry import assign_crs
 
 from dea_tools.bandindices import calculate_indices
 from dea_tools.classification import collect_training_data
+
 
 # Need ls5 for 2010 and ls8 for 2015+
 time = "2015"
@@ -28,12 +31,6 @@ field = "classnum"
 
 zonal_stats = 'median'
 resolution = (-30, 30)
-fail_ratio = 0.05
-fail_threshold  = 0.02
-reduce_func = None  #'geomedian'
-band_indices = None  # ['NDVI']
-drop = False
-clean=True
 return_coords=True
 
 ncpus = round(get_cpu_quota())
@@ -65,7 +62,7 @@ query = {
 input_data = gpd.read_file(path)
 
 column_names, model_input = collect_training_data(
-    gdf=input_datas,
+    gdf=input_data,
     dc_query=query,
     ncpus=ncpus,
     return_coords=False,
@@ -75,12 +72,11 @@ column_names, model_input = collect_training_data(
 
 
 model_input = np.hstack((model_input, np.full((model_input.shape[0], 1), int(time))))
-column_names.append("time")
-print(model_input.shape)
-output_file = f"{time}_training_data.txt"
+output_file = f"{time}_training_data.csv"
 
-np.savetxt(output_file, model_input, header=" ".join(column_names), fmt="%4f")
-#print("binarizing data")
-#data = pd.read_csv(output_file, header-0, sep=" ")
-#data['binary_class'] = np.where(data['#'] == 111, 1, 0)
-#data.to_csv(f"{time}_training_data_binary.txt")
+# Add a binary classification column to the data and remove the multi-class variable
+data = pd.DataFrame(data=model_input, columns=column_names)
+data['binary_class'] = data['classnum'].apply(lambda x: 111 if x==111 else 0)
+data.drop(labels=['classnum'], axis=1, inplace=True)
+data.to_csv(output_file, index=False)
+
